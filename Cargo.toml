@@ -1,0 +1,24 @@
+[package]
+name = "rust-localtunnel"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "rust-localtunnel"
+path = "src/main.rs"
+
+[[bin]]
+name = "rust-localtunnel-client"
+path = "src/client.rs"
+
+[dependencies]
+anyhow = "1.0.100"
+clap = "4.5.51"
+env_logger = "0.11.8"
+log = "0.4.28"
+reqwest = "0.12.24"
+serde = "1.0.228"
+serde_json = "1.0.145"
+tokio = "1.48.0"
+uuid = "1.18.1"
+warp = "0.4.2"
