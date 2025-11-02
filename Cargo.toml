@@ -13,12 +13,13 @@ path = "src/client.rs"
 
 [dependencies]
 anyhow = "1.0.100"
-clap = "4.5.51"
+bytes = "1.10.1"
+clap = { version = "4.5.51", features = ["derive"] }
 env_logger = "0.11.8"
 log = "0.4.28"
-reqwest = "0.12.24"
-serde = "1.0.228"
+reqwest = { version = "0.12.24", features = ["json"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-tokio = "1.48.0"
-uuid = "1.18.1"
-warp = "0.4.2"
+tokio = { version = "1.48.0", features = ["full"] }
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
+warp = { version = "0.4.2", features = ["server"] }
