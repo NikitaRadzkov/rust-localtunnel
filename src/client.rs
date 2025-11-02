@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     });
 
     let response = client
-        .post(&format!("{}/api/tunnels", cli.server))
+        .post(format!("{}/api/tunnels", cli.server))
         .json(&request)
         .send()
         .await?;

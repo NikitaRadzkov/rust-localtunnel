@@ -1,1 +1,22 @@
+# Rust build artifacts
 /target
+**/*.rs.bk
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*.tmp

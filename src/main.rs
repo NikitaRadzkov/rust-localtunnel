@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bytes::Bytes;
 use clap::Parser;
 use log::{error, info};
 use std::collections::HashMap;
@@ -7,7 +8,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 use warp::Filter;
-use bytes::Bytes;
 use warp::http::header::HeaderMap;
 
 type Subdomains = Arc<RwLock<HashMap<String, Tunnel>>>;
@@ -69,9 +69,7 @@ async fn main() -> Result<()> {
         .next()
         .expect("Invalid host/port");
 
-    warp::serve(routes)
-        .run(addr)
-        .await;
+    warp::serve(routes).run(addr).await;
 
     Ok(())
 }
@@ -126,7 +124,10 @@ async fn create_tunnel_handler(
         target_url: req.target_url,
     };
 
-    info!("Created tunnel: {} -> {}", response.public_url, response.target_url);
+    info!(
+        "Created tunnel: {} -> {}",
+        response.public_url, response.target_url
+    );
 
     Ok(warp::reply::json(&response))
 }
@@ -150,18 +151,18 @@ async fn proxy_handler(
     let host_str = host
         .as_ref()
         .map(|h| h.as_str().to_string())
-        .ok_or_else(|| warp::reject::not_found())?;
+        .ok_or_else(warp::reject::not_found)?;
 
-    let authority = extract_authority(Some(host_str.clone()))
-        .ok_or_else(|| warp::reject::not_found())?;
-    let subdomain = extract_subdomain(&authority).ok_or_else(|| warp::reject::not_found())?;
+    let authority =
+        extract_authority(Some(host_str.clone())).ok_or_else(warp::reject::not_found)?;
+    let subdomain = extract_subdomain(&authority).ok_or_else(warp::reject::not_found)?;
 
     let tunnel = {
         let tunnels = subdomains.read().await;
         tunnels.get(&subdomain).cloned()
     };
 
-    let tunnel = tunnel.ok_or_else(|| warp::reject::not_found())?;
+    let tunnel = tunnel.ok_or_else(warp::reject::not_found)?;
 
     info!("Proxying request to tunnel: {} {}", method, path.as_str());
 
@@ -178,22 +179,20 @@ async fn proxy_handler(
         }
     }
 
-    let response = request_builder
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| {
-            error!("Failed to proxy request: {}", e);
-            warp::reject::not_found()
-        })?;
+    let response = request_builder.body(body).send().await.map_err(|e| {
+        error!("Failed to proxy request: {}", e);
+        warp::reject::not_found()
+    })?;
 
     let status = response.status();
     let headers = response.headers().clone();
-    let body_bytes = response.bytes().await.map_err(|_| warp::reject::not_found())?;
+    let body_bytes = response
+        .bytes()
+        .await
+        .map_err(|_| warp::reject::not_found())?;
 
     // Create response with bytes
-    let mut response_builder = warp::http::Response::builder()
-        .status(status);
+    let mut response_builder = warp::http::Response::builder().status(status);
 
     // Copy response headers
     for (key, value) in headers.iter() {
@@ -211,10 +210,21 @@ async fn proxy_handler(
 }
 
 fn extract_subdomain(host: &str) -> Option<String> {
-    host.split('.')
-        .next()
-        .filter(|&s| !s.is_empty() && s != "www" && s != "localhost")
-        .map(|s| s.to_string())
+    let parts: Vec<&str> = host.split('.').collect();
+    // Need at least 3 parts (subdomain.domain.tld) to have a valid subdomain
+    if parts.len() < 3 {
+        return None;
+    }
+    let first_part = parts.first()?;
+    if first_part.is_empty()
+        || first_part == &"www"
+        || first_part == &"localhost"
+        || first_part == &"rustunnel"
+    {
+        None
+    } else {
+        Some(first_part.to_string())
+    }
 }
 
 fn is_hop_by_hop_header(header_name: &warp::http::HeaderName) -> bool {
@@ -246,10 +256,7 @@ mod tests {
             extract_subdomain("myapp.rustunnel.example.com"),
             Some("myapp".to_string())
         );
-        assert_eq!(
-            extract_subdomain("rustunnel.example.com"),
-            None
-        );
+        assert_eq!(extract_subdomain("rustunnel.example.com"), None);
         assert_eq!(extract_subdomain("localhost"), None);
         assert_eq!(extract_subdomain("www.example.com"), None);
     }
